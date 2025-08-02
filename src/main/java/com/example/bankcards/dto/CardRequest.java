@@ -6,16 +6,14 @@ import java.time.LocalDate;
 
 @Data
 public class CardRequest {
-    @NotBlank(message = "Card number is required")
-    @Pattern(regexp = "^[0-9]{16}$", message = "Invalid card number format")
+    @NotBlank
     private String cardNumber;
-
-    @NotBlank(message = "Owner name is required")
+    @NotBlank
     private String ownerName;
-
-    @Future(message = "Expiration date must be in the future")
+    @Future
     private LocalDate expirationDate;
-
-    @PositiveOrZero(message = "Balance cannot be negative")
+    @PositiveOrZero
     private double initialBalance;
+    @NotNull
+    private Long userId;
 }
