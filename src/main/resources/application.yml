@@ -3,10 +3,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/bank_db
     username: postgres
     password: postgres
-
-encryption:
-  secret: 12345
-
-liquibase:
-  enabled: true
-  change-log: classpath:/db/migration/master.xml
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    change-log: classpath:db/migration/db.changelog-master.yml
+    enabled: true
