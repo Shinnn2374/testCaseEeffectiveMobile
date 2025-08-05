@@ -1,3 +1,0 @@
-databaseChangeLog:
-  - include:
-      file: db/migration/initial-schema.yaml
