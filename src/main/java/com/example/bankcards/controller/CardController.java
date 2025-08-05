@@ -40,4 +40,24 @@ public class CardController {
                       @AuthenticationPrincipal User user) {
         cardService.blockCard(id, user.getUsername());
     }
+
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('USER')")
+    public List<CardResponseDto> getMyCards(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return cardService.getUserCards(user.getUsername(), status, PageRequest.of(page, size));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<CardResponseDto> getAllCardsForAdmin(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return cardService.getAllCardsForAdmin(status, PageRequest.of(page, size));
+    }
+
 }

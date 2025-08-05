@@ -10,6 +10,7 @@ import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -58,5 +59,31 @@ public class CardService {
 
     private String encrypt(String number) {
         return number;
+    }
+
+    public List<CardResponseDto> getUserCards(String username, String statusStr, Pageable pageable) {
+        Page<Card> page;
+
+        if (statusStr == null) {
+            page = cardRepo.findByOwnerUsername(username, pageable);
+        } else {
+            CardStatus status = CardStatus.valueOf(statusStr.toUpperCase());
+            page = cardRepo.findByOwnerUsernameAndStatus(username, status, pageable);
+        }
+
+        return page.stream().map(cardMapper::toDto).toList();
+    }
+
+    public List<CardResponseDto> getAllCardsForAdmin(String statusStr, Pageable pageable) {
+        Page<Card> page;
+
+        if (statusStr == null) {
+            page = cardRepo.findAll(pageable);
+        } else {
+            CardStatus status = CardStatus.valueOf(statusStr.toUpperCase());
+            page = cardRepo.findByStatus(status, pageable);
+        }
+
+        return page.stream().map(cardMapper::toDto).toList();
     }
 }
