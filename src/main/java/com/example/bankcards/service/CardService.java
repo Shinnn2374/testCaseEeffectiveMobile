@@ -9,6 +9,7 @@ import com.example.bankcards.exception.AccessDeniedException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.UserRepository;
 import com.example.bankcards.util.CardMapper;
+import com.example.bankcards.util.EncryptionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,11 +28,13 @@ public class CardService {
     @Autowired
     private CardMapper cardMapper;
 
+    @Autowired private EncryptionUtil encryptionUtil;
+
     public CardResponseDto createCard(CardRequestDto dto, String ownerUsername) {
         User owner = userRepo.findByUsername(ownerUsername).orElseThrow();
 
         Card card = new Card();
-        card.setEncryptedNumber(encrypt(dto.getCardNumber()));
+        card.setEncryptedNumber(encryptionUtil.encrypt(dto.getCardNumber()));
         card.setExpiryDate(dto.getExpiryDate());
         card.setOwner(owner);
         card.setStatus(CardStatus.ACTIVE);
@@ -40,6 +43,7 @@ public class CardService {
         cardRepo.save(card);
         return cardMapper.toDto(card);
     }
+
 
     public List<CardResponseDto> getMyCards(String username, Pageable pageable) {
         return cardRepo.findByOwnerUsername(username, pageable)
