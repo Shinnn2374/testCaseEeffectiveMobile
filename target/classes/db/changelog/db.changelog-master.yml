@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/user-role-init.yml
+  - include:
+      file: db/changelog/card-init.yml

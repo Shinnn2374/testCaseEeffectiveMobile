@@ -31,7 +31,7 @@ public class CardService {
     @Autowired private EncryptionUtil encryptionUtil;
 
     public CardResponseDto createCard(CardRequestDto dto, String ownerUsername) {
-        User owner = userRepo.findByUsername(ownerUsername).orElseThrow();
+        User owner = userRepo.findByUsername(ownerUsername).orElseThrow(() -> new RuntimeException("User not found"));
 
         Card card = new Card();
         card.setEncryptedNumber(encryptionUtil.encrypt(dto.getCardNumber()));
@@ -53,7 +53,7 @@ public class CardService {
     }
 
     public void blockCard(Long cardId, String requester) {
-        Card card = cardRepo.findById(cardId).orElseThrow();
+        Card card = cardRepo.findById(cardId).orElseThrow(() -> new RuntimeException("User not found"));
         if (!card.getOwner().getUsername().equals(requester)) {
             throw new AccessDeniedException("Not your card");
         }
@@ -75,7 +75,8 @@ public class CardService {
             page = cardRepo.findByOwnerUsernameAndStatus(username, status, pageable);
         }
 
-        return page.stream().map(cardMapper::toDto).toList();
+        List<CardResponseDto> list = page.stream().map(cardMapper::toDto).toList();
+        return list;
     }
 
     public List<CardResponseDto> getAllCardsForAdmin(String statusStr, Pageable pageable) {

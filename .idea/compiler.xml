@@ -12,7 +12,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="testCaseEeffectiveMobile" options="-parameters" />
+      <module name="testCaseEeffectiveMobile" options="" />
     </option>
   </component>
 </project>

@@ -2,6 +2,7 @@ package com.example.bankcards.service;
 
 import com.example.bankcards.dto.AuthRequest;
 import com.example.bankcards.dto.RegisterRequest;
+import com.example.bankcards.entity.Role;
 import com.example.bankcards.entity.User;
 import com.example.bankcards.repository.RoleRepository;
 import com.example.bankcards.repository.UserRepository;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -35,8 +37,13 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.username);
         user.setPassword(passwordEncoder.encode(request.password));
-        user.setRoles(Set.of(roleRepository.findById(request.role).orElseThrow()));
+        Role role = roleRepository.findById(request.role)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
 
+        Set<Role> roles = new HashSet<>();
+        roles.add(role);
+
+        user.setRoles(roles);
         userRepository.save(user);
         return jwtUtil.generateToken(user);
     }
