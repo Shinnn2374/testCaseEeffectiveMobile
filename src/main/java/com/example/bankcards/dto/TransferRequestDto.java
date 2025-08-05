@@ -3,10 +3,13 @@ package com.example.bankcards.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@Data
+@Getter
+@Setter
 public class TransferRequestDto {
     @NotNull
     private Long fromCardId;

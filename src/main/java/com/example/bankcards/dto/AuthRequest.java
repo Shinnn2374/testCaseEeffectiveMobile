@@ -1,8 +1,10 @@
 package com.example.bankcards.dto;
 
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+
 public class AuthRequest {
 
     public String username;
