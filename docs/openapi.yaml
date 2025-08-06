@@ -1,46 +1,48 @@
 paths:
-  /api/transactions:
-    post:
-      summary: "Transfer between user's cards"
+  /api/cards/filter:
+    get:
+      summary: "Filter cards with pagination"
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+          description: "Page number (starts from 0)"
+        - in: query
+          name: size
+          schema:
+            type: integer
+          description: "Number of cards per page"
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransactionRequest"
+              $ref: "#/components/schemas/CardFilterRequest"
       responses:
         200:
-          description: "Transfer successful"
+          description: "Filtered cards"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransactionResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/CardResponse"
 components:
   schemas:
-    TransactionRequest:
+    CardFilterRequest:
       type: object
       properties:
-        sourceCardId:
-          type: integer
-        targetCardId:
-          type: integer
-        amount:
-          type: number
-          format: double
-    TransactionResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-        sourceCardId:
-          type: integer
-        targetCardId:
-          type: integer
-        amount:
-          type: number
-          format: double
-        timestamp:
+        status:
           type: string
-          format: date-time
+          enum: [ ACTIVE, BLOCKED, EXPIRED ]
+        ownerName:
+          type: string
+        expirationDateFrom:
+          type: string
+          format: date
+        expirationDateTo:
+          type: string
+          format: date
 
 openapi:
 info:

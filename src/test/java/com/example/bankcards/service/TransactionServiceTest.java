@@ -4,58 +4,197 @@ import com.example.bankcards.dto.TransactionRequest;
 import com.example.bankcards.dto.TransactionResponse;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
+import com.example.bankcards.entity.Transaction;
 import com.example.bankcards.entity.User;
+import com.example.bankcards.exception.EntityNotFoundException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.TransactionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.*;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-public class TransactionServiceTest {
+class TransactionServiceTest {
+
+    @InjectMocks
+    private TransactionService transactionService;
+
     @Mock
     private CardRepository cardRepository;
 
     @Mock
     private TransactionRepository transactionRepository;
 
-    @InjectMocks
-    private TransactionService transactionService;
+    private final Long userId = 1L;
+    private Card sourceCard;
+    private Card targetCard;
 
-    @Test
-    void transfer_Success() {
-        // Подготовка данных
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
         User user = new User();
-        user.setId(1L);
+        user.setId(userId);
 
-        Card sourceCard = new Card();
-        sourceCard.setId(1L);
-        sourceCard.setUser(user);
+        sourceCard = new Card();
+        sourceCard.setId(100L);
         sourceCard.setBalance(BigDecimal.valueOf(1000));
         sourceCard.setStatus(CardStatus.ACTIVE);
+        sourceCard.setUser(user);
 
-        Card targetCard = new Card();
-        targetCard.setId(2L);
-        targetCard.setUser(user);
+        targetCard = new Card();
+        targetCard.setId(200L);
         targetCard.setBalance(BigDecimal.valueOf(500));
         targetCard.setStatus(CardStatus.ACTIVE);
+        targetCard.setUser(user);
+    }
 
-        when(cardRepository.findById(1L)).thenReturn(Optional.of(sourceCard));
-        when(cardRepository.findById(2L)).thenReturn(Optional.of(targetCard));
+    @Test
+    void transfer_shouldSucceed() {
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(sourceCard.getId());
+        request.setTargetCardId(targetCard.getId());
+        request.setAmount(BigDecimal.valueOf(200));
 
-        TransactionRequest request = new TransactionRequest(1L, 2L, BigDecimal.valueOf(200));
-        TransactionResponse response = transactionService.transfer(1L, request);
+        when(cardRepository.findById(sourceCard.getId())).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(targetCard.getId())).thenReturn(Optional.of(targetCard));
 
-        assertThat(response.getAmount()).isEqualTo(BigDecimal.valueOf(200));
-        verify(cardRepository, times(2)).findById(any());
-        verify(transactionRepository).save(any());
+        when(transactionRepository.save(any(Transaction.class))).thenAnswer(invocation -> {
+            Transaction tx = invocation.getArgument(0);
+            tx.setId(1L);
+            return tx;
+        });
+
+        TransactionResponse response = transactionService.transfer(userId, request);
+
+        assertNotNull(response);
+        assertEquals(sourceCard.getId(), response.getSourceCardId());
+        assertEquals(targetCard.getId(), response.getTargetCardId());
+        assertEquals(BigDecimal.valueOf(200), response.getAmount());
+        assertNotNull(response.getTimestamp());
+
+        assertEquals(BigDecimal.valueOf(800), sourceCard.getBalance());
+        assertEquals(BigDecimal.valueOf(700), targetCard.getBalance());
+    }
+
+    @Test
+    void transfer_shouldFail_whenSourceCardNotFound() {
+        when(cardRepository.findById(100L)).thenReturn(Optional.empty());
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(EntityNotFoundException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenTargetCardNotFound() {
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.empty());
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(EntityNotFoundException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenSourceCardNotBelongToUser() {
+        sourceCard.getUser().setId(999L); // чужой пользователь
+
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.of(targetCard));
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(SecurityException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenTargetCardNotBelongToUser() {
+        targetCard.getUser().setId(999L);
+
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.of(targetCard));
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(SecurityException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenSourceCardInactive() {
+        sourceCard.setStatus(CardStatus.BLOCKED);
+
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.of(targetCard));
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(IllegalStateException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenTargetCardInactive() {
+        targetCard.setStatus(CardStatus.BLOCKED);
+
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.of(targetCard));
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(IllegalStateException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenInsufficientFunds() {
+        sourceCard.setBalance(BigDecimal.valueOf(50)); // меньше чем запрошено
+
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.of(targetCard));
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.valueOf(100));
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.transfer(userId, request));
+    }
+
+    @Test
+    void transfer_shouldFail_whenAmountIsZeroOrNegative() {
+        when(cardRepository.findById(100L)).thenReturn(Optional.of(sourceCard));
+        when(cardRepository.findById(200L)).thenReturn(Optional.of(targetCard));
+
+        TransactionRequest request = new TransactionRequest();
+        request.setSourceCardId(100L);
+        request.setTargetCardId(200L);
+        request.setAmount(BigDecimal.ZERO);
+
+        assertThrows(IllegalArgumentException.class, () -> transactionService.transfer(userId, request));
+
+        request.setAmount(BigDecimal.valueOf(-10));
+        assertThrows(IllegalArgumentException.class, () -> transactionService.transfer(userId, request));
     }
 }

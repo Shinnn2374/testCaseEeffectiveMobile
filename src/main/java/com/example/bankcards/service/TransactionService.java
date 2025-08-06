@@ -23,7 +23,6 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse transfer(Long userId, TransactionRequest request) {
-        // Получаем карты из БД
         Card sourceCard = cardRepository.findById(request.getSourceCardId())
                 .orElseThrow(() -> new EntityNotFoundException("Source card not found"));
         Card targetCard = cardRepository.findById(request.getTargetCardId())
