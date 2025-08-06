@@ -1,9 +1,7 @@
 package com.example.bankcards.dto;
 
 import com.example.bankcards.entity.CardStatus;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,6 +9,8 @@ import java.time.LocalDate;
 @Getter
 @Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class CardResponse {
     private Long id;
     private String maskedNumber;  // "**** **** **** 1234"

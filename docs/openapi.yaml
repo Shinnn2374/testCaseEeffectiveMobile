@@ -1,1 +1,46 @@
-# Здесь будет OpenAPI описание всех доступных эндпоинтов и моделей данных.
+paths:
+  /api/transactions:
+    post:
+      summary: "Transfer between user's cards"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRequest"
+      responses:
+        200:
+          description: "Transfer successful"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+components:
+  schemas:
+    TransactionRequest:
+      type: object
+      properties:
+        sourceCardId:
+          type: integer
+        targetCardId:
+          type: integer
+        amount:
+          type: number
+          format: double
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sourceCardId:
+          type: integer
+        targetCardId:
+          type: integer
+        amount:
+          type: number
+          format: double
+        timestamp:
+          type: string
+          format: date-time
+
+openapi:
+info:
