@@ -6,6 +6,8 @@ import com.example.bankcards.dto.CardResponse;
 import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.User;
+import com.example.bankcards.exception.BusinessException;
+import com.example.bankcards.exception.CardNotFoundException;
 import com.example.bankcards.exception.EntityNotFoundException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.UserRepository;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,12 +69,11 @@ public class CardService {
 
     public CardResponse getCardById(Long cardId, Long userId) {
         Card card = cardRepository.findById(cardId)
-                .orElseThrow(() -> new EntityNotFoundException("Card not found with id: " + cardId));
+                .orElseThrow(() -> new CardNotFoundException(cardId));
 
         if (!card.getUser().getId().equals(userId)) {
-            throw new SecurityException("User is not the owner of the card");
+            throw new BusinessException("Access denied", HttpStatus.FORBIDDEN);
         }
-
         return mapToCardResponse(card);
     }
 

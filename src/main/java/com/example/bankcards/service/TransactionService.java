@@ -6,6 +6,7 @@ import com.example.bankcards.entity.Card;
 import com.example.bankcards.entity.CardStatus;
 import com.example.bankcards.entity.Transaction;
 import com.example.bankcards.exception.EntityNotFoundException;
+import com.example.bankcards.exception.TransferException;
 import com.example.bankcards.repository.CardRepository;
 import com.example.bankcards.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +45,8 @@ public class TransactionService {
     }
 
     private void validateTransfer(Long userId, Card sourceCard, Card targetCard, BigDecimal amount) {
-        if (!sourceCard.getUser().getId().equals(userId)){
-            throw new SecurityException("Source card does not belong to the user");
+        if (!sourceCard.getUser().getId().equals(userId)) {
+            throw new TransferException("Source card does not belong to the user");
         }
         if (!targetCard.getUser().getId().equals(userId)) {
             throw new SecurityException("Target card does not belong to the user");

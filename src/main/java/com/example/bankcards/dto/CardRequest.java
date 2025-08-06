@@ -14,13 +14,14 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CardRequest {
-    @NotBlank
+
+    @NotBlank(message = "Owner name cannot be blank")
     private String ownerName;
 
-    @Future
+    @Future(message = "Expiration date must be in the future")
     private LocalDate expirationDate;
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "Balance cannot be negative")
     private BigDecimal balance;
 
     public String getOwnerName() {

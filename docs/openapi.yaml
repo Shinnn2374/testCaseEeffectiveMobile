@@ -1,40 +1,338 @@
+openapi: 3.0.1
+info:
+  title: Bank Cards Management API
+  description: API для управления банковскими картами
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
 paths:
-  /api/cards/filter:
-    get:
-      summary: "Filter cards with pagination"
-      parameters:
-        - in: query
-          name: page
-          schema:
-            type: integer
-          description: "Page number (starts from 0)"
-        - in: query
-          name: size
-          schema:
-            type: integer
-          description: "Number of cards per page"
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Регистрация нового пользователя
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CardFilterRequest"
+              $ref: '#/components/schemas/UserRegisterRequest'
       responses:
-        200:
-          description: "Filtered cards"
+        201:
+          description: Пользователь зарегистрирован
+        400:
+          description: Невалидные данные
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CardResponse"
+                $ref: '#/components/schemas/ApiError'
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Аутентификация пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        200:
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        401:
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/cards:
+    get:
+      tags: [Cards]
+      summary: Получить карты пользователя (с пагинацией)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      responses:
+        200:
+          description: Список карт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPageResponse'
+        401:
+          description: Не авторизован
+
+    post:
+      tags: [Cards]
+      summary: Создать новую карту
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardRequest'
+      responses:
+        201:
+          description: Карта создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        400:
+          description: Невалидные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/cards/filter:
+    get:
+      tags: [Cards]
+      summary: Фильтрация карт с пагинацией
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardFilterRequest'
+      responses:
+        200:
+          description: Отфильтрованные карты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPageResponse'
+        400:
+          description: Невалидные параметры фильтрации
+
+  /api/cards/{id}:
+    get:
+      tags: [Cards]
+      summary: Получить карту по ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Данные карты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        404:
+          description: Карта не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    delete:
+      tags: [Cards]
+      summary: Удалить карту
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        204:
+          description: Карта удалена
+        404:
+          description: Карта не найдена
+
+  /api/cards/{id}/block:
+    patch:
+      tags: [Cards]
+      summary: Заблокировать карту
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Карта заблокирована
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardResponse'
+        404:
+          description: Карта не найдена
+
+  /api/transactions:
+    post:
+      tags: [Transactions]
+      summary: Перевод между картами
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        200:
+          description: Перевод выполнен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        400:
+          description: Ошибка перевода
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        404:
+          description: Карта не найдена
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    page:
+      name: page
+      in: query
+      description: Номер страницы (начиная с 0)
+      required: false
+      schema:
+        type: integer
+        default: 0
+    size:
+      name: size
+      in: query
+      description: Размер страницы
+      required: false
+      schema:
+        type: integer
+        default: 10
+
   schemas:
+    # Auth
+    UserRegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        name:
+          type: string
+          minLength: 2
+
+    UserLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        expiresIn:
+          type: integer
+
+    # Cards
+    CardRequest:
+      type: object
+      required: [ownerName, expirationDate, balance]
+      properties:
+        ownerName:
+          type: string
+          example: "IVAN IVANOV"
+        expirationDate:
+          type: string
+          format: date
+          example: "2025-12-31"
+        balance:
+          type: number
+          format: double
+          minimum: 0
+          example: 1000.00
+
+    CardResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        maskedNumber:
+          type: string
+          example: "**** **** **** 1234"
+        ownerName:
+          type: string
+        expirationDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, BLOCKED, EXPIRED]
+        balance:
+          type: number
+          format: double
+
+    CardPageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardResponse'
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+        pageNumber:
+          type: integer
+
     CardFilterRequest:
       type: object
       properties:
         status:
           type: string
-          enum: [ ACTIVE, BLOCKED, EXPIRED ]
+          enum: [ACTIVE, BLOCKED, EXPIRED]
         ownerName:
           type: string
         expirationDateFrom:
@@ -44,5 +342,47 @@ components:
           type: string
           format: date
 
-openapi:
-info:
+    # Transactions
+    TransactionRequest:
+      type: object
+      required: [sourceCardId, targetCardId, amount]
+      properties:
+        sourceCardId:
+          type: integer
+        targetCardId:
+          type: integer
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        sourceCardId:
+          type: integer
+        targetCardId:
+          type: integer
+        amount:
+          type: number
+          format: double
+        timestamp:
+          type: string
+          format: date-time
+
+    # Errors
+    ApiError:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "NOT_FOUND"
+        message:
+          type: string
+          example: "Card not found with id: 1"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-08-06T12:34:56.789Z"
