@@ -1,14 +1,32 @@
-openapi: 3.0.1
+openapi: 3.0.3
 info:
   title: Bank Cards Management API
-  description: API для управления банковскими картами
+  description: API для управления банковскими картами, переводами и аутентификации
   version: 1.0.0
+  contact:
+    email: dev@bank.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
 servers:
-  - url: http://localhost:8080
-    description: Local development server
+  - url: http://localhost:8080/api
+    description: Локальный сервер разработки
+  - url: https://api.bank.com/v1
+    description: Продакшен сервер
+
+tags:
+  - name: Authentication
+    description: Регистрация и аутентификация
+  - name: Cards
+    description: Управление банковскими картами
+  - name: Transactions
+    description: Операции перевода между картами
+  - name: Admin
+    description: Администрирование (только для роли ADMIN)
 
 paths:
-  /api/auth/register:
+  /auth/register:
     post:
       tags: [Authentication]
       summary: Регистрация нового пользователя
@@ -18,17 +36,26 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UserRegisterRequest'
+            example:
+              name: "Иван Иванов"
+              email: "user@example.com"
+              password: "SecurePass123!"
+              confirmPassword: "SecurePass123!"
       responses:
         201:
-          description: Пользователь зарегистрирован
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
         400:
           description: Невалидные данные
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/auth/login:
+  /auth/login:
     post:
       tags: [Authentication]
       summary: Аутентификация пользователя
@@ -38,6 +65,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UserLoginRequest'
+            example:
+              email: "user@example.com"
+              password: "SecurePass123!"
       responses:
         200:
           description: Успешный вход
@@ -50,26 +80,26 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiError'
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/cards:
+  /cards:
     get:
       tags: [Cards]
       summary: Получить карты пользователя (с пагинацией)
       security:
         - bearerAuth: []
       parameters:
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/size'
+        - $ref: '#/components/parameters/pageNumber'
+        - $ref: '#/components/parameters/pageSize'
       responses:
         200:
           description: Список карт
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CardPageResponse'
+                $ref: '#/components/schemas/CardListResponse'
         401:
-          description: Не авторизован
+          $ref: '#/components/responses/UnauthorizedError'
 
     post:
       tags: [Cards]
@@ -81,7 +111,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CardRequest'
+              $ref: '#/components/schemas/CardCreateRequest'
+            example:
+              ownerName: "IVAN IVANOV"
+              expirationDate: "2026-12-31"
+              balance: 1000.00
       responses:
         201:
           description: Карта создана
@@ -90,49 +124,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/CardResponse'
         400:
-          description: Невалидные данные
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/ValidationError'
 
-  /api/cards/filter:
-    get:
-      tags: [Cards]
-      summary: Фильтрация карт с пагинацией
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/page'
-        - $ref: '#/components/parameters/size'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CardFilterRequest'
-      responses:
-        200:
-          description: Отфильтрованные карты
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardPageResponse'
-        400:
-          description: Невалидные параметры фильтрации
-
-  /api/cards/{id}:
+  /cards/{id}:
     get:
       tags: [Cards]
       summary: Получить карту по ID
       security:
         - bearerAuth: []
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
+        - $ref: '#/components/parameters/cardId'
       responses:
         200:
           description: Данные карты
@@ -141,52 +142,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/CardResponse'
         404:
-          description: Карта не найдена
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+          $ref: '#/components/responses/NotFoundError'
 
-    delete:
-      tags: [Cards]
-      summary: Удалить карту
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        204:
-          description: Карта удалена
-        404:
-          description: Карта не найдена
-
-  /api/cards/{id}/block:
-    patch:
-      tags: [Cards]
-      summary: Заблокировать карту
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Карта заблокирована
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CardResponse'
-        404:
-          description: Карта не найдена
-
-  /api/transactions:
+  /transactions:
     post:
       tags: [Transactions]
       summary: Перевод между картами
@@ -198,6 +156,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TransactionRequest'
+            example:
+              sourceCardId: 1
+              targetCardId: 2
+              amount: 500.00
       responses:
         200:
           description: Перевод выполнен
@@ -206,13 +168,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TransactionResponse'
         400:
-          description: Ошибка перевода
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        404:
-          description: Карта не найдена
+          $ref: '#/components/responses/TransferError'
 
 components:
   securitySchemes:
@@ -220,9 +176,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT токен авторизации
 
   parameters:
-    page:
+    pageNumber:
       name: page
       in: query
       description: Номер страницы (начиная с 0)
@@ -230,31 +187,51 @@ components:
       schema:
         type: integer
         default: 0
-    size:
+        minimum: 0
+    pageSize:
       name: size
       in: query
-      description: Размер страницы
+      description: Количество элементов на странице
       required: false
       schema:
         type: integer
         default: 10
+        minimum: 1
+        maximum: 100
+    cardId:
+      name: id
+      in: path
+      required: true
+      description: ID карты
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
 
   schemas:
     # Auth
     UserRegisterRequest:
       type: object
-      required: [email, password, name]
+      required: [name, email, password, confirmPassword]
       properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: "Иван Иванов"
         email:
           type: string
           format: email
+          example: "user@example.com"
         password:
           type: string
           format: password
           minLength: 8
-        name:
+          pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$"
+          example: "SecurePass123!"
+        confirmPassword:
           type: string
-          minLength: 2
+          format: password
 
     UserLoginRequest:
       type: object
@@ -263,20 +240,37 @@ components:
         email:
           type: string
           format: email
+          example: "user@example.com"
         password:
           type: string
           format: password
+          example: "SecurePass123!"
 
     AuthResponse:
       type: object
       properties:
         token:
           type: string
+          description: JWT токен
         expiresIn:
           type: integer
+          description: Время жизни токена в миллисекундах
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [USER, ADMIN]
 
     # Cards
-    CardRequest:
+    CardCreateRequest:
       type: object
       required: [ownerName, expirationDate, balance]
       properties:
@@ -286,7 +280,7 @@ components:
         expirationDate:
           type: string
           format: date
-          example: "2025-12-31"
+          example: "2026-12-31"
         balance:
           type: number
           format: double
@@ -298,6 +292,8 @@ components:
       properties:
         id:
           type: integer
+          format: int64
+          example: 1
         maskedNumber:
           type: string
           example: "**** **** **** 1234"
@@ -312,8 +308,11 @@ components:
         balance:
           type: number
           format: double
+        createdAt:
+          type: string
+          format: date-time
 
-    CardPageResponse:
+    CardListResponse:
       type: object
       properties:
         content:
@@ -327,21 +326,6 @@ components:
         pageNumber:
           type: integer
 
-    CardFilterRequest:
-      type: object
-      properties:
-        status:
-          type: string
-          enum: [ACTIVE, BLOCKED, EXPIRED]
-        ownerName:
-          type: string
-        expirationDateFrom:
-          type: string
-          format: date
-        expirationDateTo:
-          type: string
-          format: date
-
     # Transactions
     TransactionRequest:
       type: object
@@ -349,42 +333,97 @@ components:
       properties:
         sourceCardId:
           type: integer
+          format: int64
+          minimum: 1
+          example: 1
         targetCardId:
           type: integer
+          format: int64
+          minimum: 1
+          example: 2
         amount:
           type: number
           format: double
           minimum: 0.01
+          example: 500.00
 
     TransactionResponse:
       type: object
       properties:
         id:
           type: integer
+          format: int64
         sourceCardId:
           type: integer
         targetCardId:
           type: integer
         amount:
           type: number
-          format: double
         timestamp:
           type: string
           format: date-time
 
     # Errors
-    ApiError:
+    ErrorResponse:
       type: object
       properties:
         status:
           type: string
-          example: "NOT_FOUND"
+          example: "BAD_REQUEST"
         message:
           type: string
-          example: "Card not found with id: 1"
+          example: "Validation failed"
         timestamp:
           type: string
           format: date-time
-          example: "2025-08-06T12:34:56.789Z"
+        errors:
+          type: array
+          items:
+            type: string
+          example: ["Password must contain at least 1 digit"]
 
+  responses:
+    UnauthorizedError:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "UNAUTHORIZED"
+            message: "Full authentication is required"
+            timestamp: "2025-08-06T12:00:00Z"
 
+    NotFoundError:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "NOT_FOUND"
+            message: "Card not found with id: 999"
+            timestamp: "2025-08-06T12:00:00Z"
+
+    ValidationError:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "BAD_REQUEST"
+            message: "Validation failed"
+            timestamp: "2025-08-06T12:00:00Z"
+            errors: ["Expiration date must be in the future"]
+
+    TransferError:
+      description: Ошибка перевода
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: "BAD_REQUEST"
+            message: "Insufficient funds"
+            timestamp: "2025-08-06T12:00:00Z"

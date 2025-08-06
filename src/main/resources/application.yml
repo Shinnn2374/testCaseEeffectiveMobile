@@ -1,5 +1,62 @@
-#Что нужно сделать:
-#  - Указать настройки подключения к базе данных.
-#  - Указать порт приложения.
-#  - Настроить параметры безопасности и JWT.
-#  - Включить Swagger UI.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bank_cards_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate # Не создает таблицы, только проверяет соответствие
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/master.xml
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+    url: ${spring.datasource.url}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+
+app:
+  jwt:
+    secret: "dGhpcy1pcy1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZy0xMjM0NTY3OA==" # Base64-encoded secret
+    expiration-ms: 86400000 # 24 часа
+
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    com:
+      example:
+        bankcards: DEBUG
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  default-produces-media-type: application/json
+  show-actuator: true
